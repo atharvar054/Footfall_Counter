@@ -1,0 +1,331 @@
+<html>
+  <head>
+    <title>People Counter</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+      .container {
+        background-color: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      }
+      h1 {
+        color: #333;
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      .upload-section {
+        margin-bottom: 30px;
+        padding: 20px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        border: 2px dashed #ddd;
+      }
+      .file-input {
+        margin-bottom: 15px;
+      }
+      input[type="file"] {
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        width: 300px;
+      }
+      button {
+        background-color: #007bff;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        margin-left: 10px;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      button:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+      }
+      .video-container {
+        text-align: center;
+        margin: 20px 0;
+      }
+      .video-feed {
+        max-width: 100%;
+        height: auto;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+      }
+      .counts-display {
+        display: none;
+        margin-top: 20px;
+        padding: 20px;
+        background-color: #e8f5e8;
+        border-radius: 8px;
+        border: 2px solid #28a745;
+      }
+      .counts-display h3 {
+        color: #28a745;
+        text-align: center;
+        margin-bottom: 15px;
+      }
+      .counts-grid {
+        display: flex;
+        justify-content: space-around;
+        text-align: center;
+      }
+      .count-item {
+        padding: 15px;
+        background-color: white;
+        border-radius: 8px;
+        min-width: 120px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      }
+      .count-number {
+        font-size: 32px;
+        font-weight: bold;
+        color: #007bff;
+        margin-bottom: 5px;
+      }
+      .count-label {
+        font-size: 14px;
+        color: #666;
+        text-transform: uppercase;
+      }
+      .status {
+        margin: 10px 0;
+        padding: 10px;
+        border-radius: 5px;
+        text-align: center;
+        font-weight: bold;
+      }
+      .status.processing {
+        background-color: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeaa7;
+      }
+      .status.complete {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🎥 Security Footage Streaming & People Counter</h1>
+      
+      <div class="upload-section">
+        <h3>Select Video File</h3>
+        <div class="file-input">
+          <input type="file" id="videoFile" accept="video/*" />
+          <button onclick="startProcessing()" id="processBtn">Start Processing</button>
+        </div>
+        <div id="status" class="status" style="display: none;"></div>
+      </div>
+      
+      <div class="visualization-controls" style="margin-bottom: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 8px;">
+        <h3>Visualization Options</h3>
+        <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
+          <button onclick="toggleHeatmap()" id="heatmapBtn" style="background-color: #28a745;">Toggle Heatmap</button>
+          <button onclick="toggleTrajectories()" id="trajectoryBtn" style="background-color: #17a2b8;">Toggle Trajectories</button>
+          <button onclick="resetVisualization()" id="resetBtn" style="background-color: #dc3545;">Reset Visualization</button>
+        </div>
+        <div id="visualizationStatus" style="margin-top: 10px; font-size: 14px; color: #666;"></div>
+      </div>
+      
+      <div class="video-container">
+        <img id="videoFeed" class="video-feed" src="/video_feed" style="display: none;">
+      </div>
+      
+      <div id="countsDisplay" class="counts-display">
+        <h3>📊 Final Count Results</h3>
+        <div class="counts-grid">
+          <div class="count-item">
+            <div class="count-number" id="inCount">0</div>
+            <div class="count-label">People In</div>
+          </div>
+          <div class="count-item">
+            <div class="count-number" id="outCount">0</div>
+            <div class="count-label">People Out</div>
+          </div>
+          <div class="count-item">
+            <div class="count-number" id="totalCount">0</div>
+            <div class="count-label">Total Count</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let isProcessing = false;
+      let videoEnded = false;
+      
+      function startProcessing() {
+        const fileInput = document.getElementById('videoFile');
+        const processBtn = document.getElementById('processBtn');
+        const statusDiv = document.getElementById('status');
+        const videoFeed = document.getElementById('videoFeed');
+        const countsDisplay = document.getElementById('countsDisplay');
+        
+        if (!fileInput.files[0]) {
+          alert('Please select a video file first.');
+          return;
+        }
+        
+        if (isProcessing) {
+          return;
+        }
+        
+        isProcessing = true;
+        processBtn.disabled = true;
+        processBtn.textContent = 'Processing...';
+        
+        // Show status
+        statusDiv.style.display = 'block';
+        statusDiv.className = 'status processing';
+        statusDiv.textContent = 'Uploading video and starting processing...';
+        
+        // Hide previous results
+        countsDisplay.style.display = 'none';
+        
+        // Upload video file
+        const formData = new FormData();
+        formData.append('video', fileInput.files[0]);
+        
+        fetch('/upload_video', {
+          method: 'POST',
+          body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            statusDiv.textContent = 'Video uploaded successfully. Starting live feed...';
+            
+            // Show video feed
+            videoFeed.style.display = 'block';
+            videoFeed.src = '/video_feed?t=' + new Date().getTime(); // Force refresh
+            
+            // Start checking for completion
+            checkVideoStatus();
+          } else {
+            throw new Error(data.error || 'Upload failed');
+          }
+        })
+        .catch(error => {
+          statusDiv.className = 'status error';
+          statusDiv.textContent = 'Error: ' + error.message;
+          processBtn.disabled = false;
+          processBtn.textContent = 'Start Processing';
+          isProcessing = false;
+        });
+      }
+      
+      function checkVideoStatus() {
+        if (!isProcessing) return;
+        
+        fetch('/video_status')
+        .then(response => response.json())
+        .then(data => {
+          if (data.completed) {
+            // Video processing completed
+            showFinalCounts(data.counts);
+          } else {
+            // Still processing, check again in 2 seconds
+            setTimeout(checkVideoStatus, 2000);
+          }
+        })
+        .catch(error => {
+          console.error('Error checking video status:', error);
+          setTimeout(checkVideoStatus, 2000);
+        });
+      }
+      
+      function showFinalCounts(counts) {
+        const statusDiv = document.getElementById('status');
+        const countsDisplay = document.getElementById('countsDisplay');
+        const processBtn = document.getElementById('processBtn');
+        
+        // Update status
+        statusDiv.className = 'status complete';
+        statusDiv.textContent = 'Video processing completed!';
+        
+        // Show counts
+        document.getElementById('inCount').textContent = counts.in_count;
+        document.getElementById('outCount').textContent = counts.out_count;
+        document.getElementById('totalCount').textContent = counts.total_count;
+        countsDisplay.style.display = 'block';
+        
+        // Reset button
+        processBtn.disabled = false;
+        processBtn.textContent = 'Start Processing';
+        isProcessing = false;
+      }
+      
+      function toggleHeatmap() {
+        fetch('/toggle_heatmap', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+          const btn = document.getElementById('heatmapBtn');
+          const status = document.getElementById('visualizationStatus');
+          if (data.show_heatmap) {
+            btn.style.backgroundColor = '#28a745';
+            btn.textContent = 'Heatmap: ON';
+            status.textContent = 'Heatmap visualization enabled - shows movement patterns';
+          } else {
+            btn.style.backgroundColor = '#6c757d';
+            btn.textContent = 'Heatmap: OFF';
+            status.textContent = 'Heatmap visualization disabled';
+          }
+        })
+        .catch(error => console.error('Error toggling heatmap:', error));
+      }
+      
+      function toggleTrajectories() {
+        fetch('/toggle_trajectories', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+          const btn = document.getElementById('trajectoryBtn');
+          const status = document.getElementById('visualizationStatus');
+          if (data.show_trajectories) {
+            btn.style.backgroundColor = '#17a2b8';
+            btn.textContent = 'Trajectories: ON';
+            status.textContent = 'Trajectory visualization enabled - shows movement paths';
+          } else {
+            btn.style.backgroundColor = '#6c757d';
+            btn.textContent = 'Trajectories: OFF';
+            status.textContent = 'Trajectory visualization disabled';
+          }
+        })
+        .catch(error => console.error('Error toggling trajectories:', error));
+      }
+      
+      function resetVisualization() {
+        fetch('/reset_visualization', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            const status = document.getElementById('visualizationStatus');
+            status.textContent = 'Visualization data reset - heatmap and trajectories cleared';
+            
+            // Reset button states
+            const heatmapBtn = document.getElementById('heatmapBtn');
+            const trajectoryBtn = document.getElementById('trajectoryBtn');
+            heatmapBtn.style.backgroundColor = '#6c757d';
+            heatmapBtn.textContent = 'Heatmap: OFF';
+            trajectoryBtn.style.backgroundColor = '#6c757d';
+            trajectoryBtn.textContent = 'Trajectories: OFF';
+          }
+        })
+        .catch(error => console.error('Error resetting visualization:', error));
+      }
+    </script>
+  </body>
+</html>
