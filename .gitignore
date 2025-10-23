@@ -1,12 +1,9 @@
-# Video files (often too large for GitHub)
-*.mp4
+# Video files (handled by Git LFS)
+# *.mp4 - now tracked by Git LFS
 *.avi
 *.mov
 *.mkv
 *.wmv
-
-# Output videos specifically
-templates/videos/Output_video.mp4
 
 # Python
 __pycache__/
