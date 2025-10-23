@@ -1,9 +1,4 @@
-# Video files (handled by Git LFS)
-# *.mp4 - now tracked by Git LFS
-*.avi
-*.mov
-*.mkv
-*.wmv
+
 
 # Python
 __pycache__/
